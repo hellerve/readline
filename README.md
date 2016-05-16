@@ -2,7 +2,9 @@
 
 A readline port for and in zepto.
 Supports history and moving around; emacs-style keybindings
-are in the works.
+are in the works (right now, `Ctrl-A` will move to the
+beginning of the line and `Ctrl-E` will move to the end
+of the line).
 
 ## Usage
 

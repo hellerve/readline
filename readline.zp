@@ -17,11 +17,17 @@
       (remove-from-input (length old))
       (display (if (list? new) (list->string new) new) :flush))))
 
-  (cleanup (lambda (f)
+  (cleanup (lambda (c f)
     (lambda (state)
       (begin
-        (remove-from-input 4)
+        (remove-from-input c)
         (f state)))))
+
+  (move-to-beginning (lambda (state)
+    (hash:set state :pos 0)))
+
+  (move-to-end (lambda (state)
+    (hash:set state :pos (length (state :acc)))))
 
   (history-up (lambda (state)
     (if (>= (state :cur) (sub1 (length history)))
@@ -53,10 +59,10 @@
                      :pos
                      add1))))
 
-  (special (make-hash "[A" (cleanup history-up)
-                      "[B" (cleanup history-down)
-                      "[D" (cleanup cursor-left)
-                      "[C" (cleanup cursor-right)))
+  (special (make-hash "[A" (cleanup 4 history-up)
+                      "[B" (cleanup 4 history-down)
+                      "[D" (cleanup 4 cursor-left)
+                      "[C" (cleanup 4 cursor-right)))
 
   (treat-special (lambda (state)
     (let ((thing (string (read-char) (read-char))))
@@ -82,13 +88,15 @@
         (cond
           ((eq? #\newline char) (list->string (state :acc)))
           ((eq? #\x1B char) (_readline (treat-special state)))
+          ((eq? 1 (char->integer char)) (_readline (move-to-beginning state)))
+          ((eq? 5 (char->integer char)) (_readline (move-to-end state)))
           ((eq? #\x7f char)
             (if (> (length (state :acc)) 0)
               (begin
                 (remove-from-input 3)
                 (_readline (hash:update (hash:update state :pos sub1)
                                         :acc
-                                        (lambda (acc) (sublist acc 0 (sub1 (length acc)))))))
+                                        (lambda (acc) (list:sublist acc 0 (sub1 (length acc)))))))
               (begin
                 (remove-from-input 2)
                 (_readline state))))
