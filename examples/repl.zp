@@ -1,0 +1,12 @@
+(load "readline/readline")
+(import-all "readline")
+
+(define (repl)
+  (let* ((str (readline:readline "repl>"))
+         (x (eval (string:parse str))))
+    (begin
+      (display "=> ")
+      (write x)
+      (readline:add-history str)
+      (repl))))
+(repl)

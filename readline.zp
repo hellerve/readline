@@ -1,0 +1,109 @@
+(module "readline"
+  (export
+    (list "readline" readline)
+    (list "add-history" add-history))
+
+  (history [])
+
+  (go-back (lambda (n)
+      (++ (string (integer->char 27)) "[" (number->string n) "D")))
+
+  (remove-from-input (lambda (count)
+    (let ((b (string:replicate count #\backspace)))
+      (display (++ b (string:replicate count #\space) b) :flush))))
+
+  (replace-input (lambda (old new)
+    (begin
+      (remove-from-input (length old))
+      (display (if (list? new) (list->string new) new) :flush))))
+
+  (cleanup (lambda (f)
+    (lambda (state)
+      (begin
+        (remove-from-input 4)
+        (f state)))))
+
+  (history-up (lambda (state)
+    (if (>= (state :cur) (sub1 (length history)))
+      state
+      (let* ((update-cur (hash:update state :cur add1))
+             (elem (list:ref history (update-cur :cur)))
+             (update-pos (hash:set update-cur :pos (sub1 (length elem)))))
+        (hash:set update-pos :acc (string->list elem))))))
+
+  (history-down (lambda (state)
+    (if (<= (state :cur) 0)
+      (new-state (state :prompt))
+      (let* ((update-cur (hash:update state :cur sub1))
+             (elem (list:ref history (update-cur :cur)))
+             (update-pos (hash:set update-cur :pos (length elem))))
+        (hash:set update-pos :acc (string->list elem))))))
+
+  (cursor-left (lambda (state)
+    (if (> 0 (sub1 (state :pos)))
+        state
+        (hash:update state 
+                     :pos
+                     sub1))))
+
+  (cursor-right (lambda (state)
+    (if (< (length (state :acc)) (add1 (state :pos)))
+        state
+        (hash:update state 
+                     :pos
+                     add1))))
+
+  (special (make-hash "[A" (cleanup history-up)
+                      "[B" (cleanup history-down)
+                      "[D" (cleanup cursor-left)
+                      "[C" (cleanup cursor-right)))
+
+  (treat-special (lambda (state)
+    (let ((thing (string (read-char) (read-char))))
+      (if (hash:contains? special thing)
+        ((special thing) state)
+        (hash:update state
+                     :acc
+                     (lambda (acc) (list:insert acc (state:pos) (string->list (++ "^[" thing)))))))))
+
+  (clean-prompt (lambda (state)
+    (begin
+      (remove-from-input (+ (length (state :acc)) (length (state :prompt)) 10))
+      (display (state :prompt) :flush)
+      (display (list->string (state :acc)) :flush)
+      (let ((diff (- (length (state :acc)) (state :pos))))
+        (if (> diff 0)
+          (display (go-back diff) :flush))))))
+
+  (_readline (lambda (state)
+    (begin
+      (clean-prompt state)
+      (let ((char (read-char)))
+        (cond
+          ((eq? #\newline char) (list->string (state :acc)))
+          ((eq? #\x1B char) (_readline (treat-special state)))
+          ((eq? #\x7f char)
+            (if (> (length (state :acc)) 0)
+              (begin
+                (remove-from-input 3)
+                (_readline (hash:update (hash:update state :pos sub1)
+                                        :acc
+                                        (lambda (acc) (sublist acc 0 (sub1 (length acc)))))))
+              (begin
+                (remove-from-input 2)
+                (_readline state))))
+          (else
+            (let ((insert-char (hash:update state
+                                             :acc
+                                             (lambda (acc) (list:insert acc (state :pos) char)))))
+              (_readline (hash:update insert-char :pos add1)))))))))
+
+  (add-history (lambda (item)
+    (set! history (cons item history))))
+
+  (new-state (lambda (prompt)
+    (make-hash :cur -1 :pos 0 :acc [] :prompt prompt)))
+
+  (readline (lambda (prompt)
+    (begin
+      (_readline (new-state prompt))))))
