@@ -34,7 +34,7 @@
       state
       (let* ((update-cur (hash:update state :cur add1))
              (elem (list:ref history (update-cur :cur)))
-             (update-pos (hash:set update-cur :pos (sub1 (length elem)))))
+             (update-pos (hash:set update-cur :pos (length elem))))
         (hash:set update-pos :acc (string->list elem))))))
 
   (history-down (lambda (state)
@@ -59,6 +59,53 @@
                      :pos
                      add1))))
 
+  (backspace (lambda (state)
+    (if (> (length (state :acc)) 0)
+      (begin
+        (remove-from-input 3)
+        (hash:update (hash:update state :pos sub1)
+                     :acc
+                     (lambda (acc) (list:sublist acc 0 (sub1 (length acc)))))))
+      (begin
+        (remove-from-input 2)
+        state)))
+
+  (_search-backspace (lambda (term)
+    (if (> (length term) 0)
+      (begin
+        (remove-from-input 3)
+        (substring term 0 (sub1 (length term))))
+      (begin
+        (remove-from-input 2)
+        term))))
+
+  (_search (lambda (state term)
+    (begin
+      (remove-from-input (+ (length (state :acc)) (length (state :prompt)) 100))
+      (display (++ "(reverse-i-search)`" term "': ") :flush)
+      (let* ((matches (filter (lambda (item) (in? item term)) history))
+             (best (get-from matches 0 ""))
+             (state (hash:set state :acc (string->list best))))
+        (begin
+          (display best :flush)
+          (case (read-char)
+              ((#\newline #\x1B) state)
+              ((eq? #\x7f char)
+                (_search state (_search-backspace term)))
+              ((eq? 1 (char->integer char)) (move-to-beginning state))
+              ((eq? 2 (char->integer char)) (cursor-left state))
+              ((eq? 5 (char->integer char)) (move-to-end state))
+              ((eq? 6 (char->integer char)) (cursor-right state))
+              ((eq? 14 (char->integer char)) (history-up state))
+              ((eq? 16 (char->integer char)) (history-down state))
+              ((eq? 18 (char->integer char)) (reverse-search state))
+              (else => (lambda (char) (_search state (++ term char))))))))))
+
+  (reverse-search (lambda (state)
+    (begin
+      (let ((found (_search state "")))
+        found))))
+
   (special (make-hash "[A" (cleanup 4 history-up)
                       "[B" (cleanup 4 history-down)
                       "[D" (cleanup 4 cursor-left)
@@ -74,7 +121,7 @@
 
   (clean-prompt (lambda (state)
     (begin
-      (remove-from-input (+ (length (state :acc)) (length (state :prompt)) 10))
+      (remove-from-input (+ (length (state :acc)) (length (state :prompt)) 100))
       (display (state :prompt) :flush)
       (display (list->string (state :acc)) :flush)
       (let ((diff (- (length (state :acc)) (state :pos))))
@@ -89,17 +136,14 @@
           ((eq? #\newline char) (list->string (state :acc)))
           ((eq? #\x1B char) (_readline (treat-special state)))
           ((eq? 1 (char->integer char)) (_readline (move-to-beginning state)))
+          ((eq? 2 (char->integer char)) (_readline (cursor-left state)))
           ((eq? 5 (char->integer char)) (_readline (move-to-end state)))
+          ((eq? 6 (char->integer char)) (_readline (cursor-right state)))
+          ((eq? 14 (char->integer char)) (_readline (history-up state)))
+          ((eq? 16 (char->integer char)) (_readline (history-down state)))
+          ((eq? 18 (char->integer char)) (_readline (reverse-search state)))
           ((eq? #\x7f char)
-            (if (> (length (state :acc)) 0)
-              (begin
-                (remove-from-input 3)
-                (_readline (hash:update (hash:update state :pos sub1)
-                                        :acc
-                                        (lambda (acc) (list:sublist acc 0 (sub1 (length acc)))))))
-              (begin
-                (remove-from-input 2)
-                (_readline state))))
+            (_readline (backspace state)))
           (else
             (let ((insert-char (hash:update state
                                              :acc

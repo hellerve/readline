@@ -2,9 +2,7 @@
 
 A readline port for and in zepto.
 Supports history and moving around; emacs-style keybindings
-are in the works (right now, `Ctrl-A` will move to the
-beginning of the line and `Ctrl-E` will move to the end
-of the line).
+are in the works and [partially supported](#emacs-bindings).
 
 ## Usage
 
@@ -37,6 +35,19 @@ You can also easily build a minimal REPL on top of that.
       (repl))))
 (repl)
 ```
+
+## Emacs Bindings
+
+The following key bindings are currently supported:
+
+* Ctrl+a: Moves the cursor to the beginning of the line.
+* Ctrl+b: Moves the cursor back one character (equivalent to backspace).
+* Ctrl+e: Moves the cursor to the end of the line.
+* Ctrl+f: Moves the cursor forward one character.
+* Ctrl+j: Equivalent to the enter key.
+* Ctrl+n: Moves back in history.
+* Ctrl+p: Moves forward in history.
+* Ctrl+r: [EXPERIMENTAL!] Searches in the history.
 
 That's all folks!
 
