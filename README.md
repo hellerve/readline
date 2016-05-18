@@ -49,6 +49,8 @@ The following key bindings are currently supported:
 * Ctrl+p: Moves forward in history.
 * Ctrl+r: [EXPERIMENTAL!] Searches in the history.
 
+Please note that autocompletion is not yet implemented.
+
 That's all folks!
 
 <hr/>
