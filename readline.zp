@@ -48,7 +48,7 @@
   (cursor-left (lambda (state)
     (if (> 0 (sub1 (state :pos)))
         state
-        (hash:update state 
+        (hash:update state
                      :pos
                      sub1))))
 
@@ -65,10 +65,10 @@
         (remove-from-input 3)
         (hash:update (hash:update state :pos sub1)
                      :acc
-                     (lambda (acc) (list:sublist acc 0 (sub1 (length acc)))))))
+                     (lambda (acc) (list:remove-n acc (sub1 (state :pos))))))
       (begin
         (remove-from-input 2)
-        state)))
+        state))))
 
   (_search-backspace (lambda (term)
     (if (> (length term) 0)
